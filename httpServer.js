@@ -16,25 +16,24 @@ try{
     if ((jsonToText === undefined)) throw new Error( " Can't access json-to-text module" );
     if ((jsonToXML === undefined)) throw new Error( " Can't access json-to-xml module" );
 
-    var searchMatch = function ( data, queryParam ){
+    var searchMatch = function ( data, queryParam ) {
         data = data.toLowerCase();
         queryParam = queryParam.toLowerCase();
         return data.search( queryParam );
     }
 
     var createJSONFile = function (fileName, sortedArray, cb) {
-
         fs.writeFile(fileName, JSON.stringify( { students: sortedArray } ), function(err) {
-            if(err) {
-                console.log("Error to create Sorted JSON");
+            if (err) {
+                return cb(err, "Failed to create JSON.");
             } else {
-                console.log("JSON saved to sortedSource.json");
+                return cb(null, "JSON is get created.");
             }
         });
-        return cb(0);
     }
 
-    var generateOutputFile = function (req, res, sortedArray, cb) {
+
+    var sentOutputFile = function () {
         console.log("Request: ", req.headers.accept );
         if( req.headers.accept === "application/json") {
             console.log("Accept: application/json");
@@ -43,38 +42,37 @@ try{
         } else if ( req.headers.accept === "text/plain") {
             console.log("Accept: text/plain");
         }
-/*        jsonToText.TextFileCreator("destination.txt", sortedArray, function(err, res){
-             if(err){
-                console.log("Failed: ", res);
-                //callback(null, 'one failed');
-             }else{
-                console.log("Successful: ", res);
-                //callback(null, 'one success');
-             }
-        });
- *//*       jsonToXML.XMLFileCreator("destination.xml", sortedArray, function(err, res){
-             if(err){
-                console.log("Failed: ", res);
-                //callback(null, 'two failed');
-             }else{
-                console.log("Successful: ", res);
-                //callback(null, 'two success');
-             }
-        });
- */       createJSONFile("sortedSource.json", sortedArray, cb);
-        ;
-        ;
-        ;
-        ;
-        console.log("Return filtered data");
-        res.end("Return filtered data.");
-        return cb(0);
+    }
+
+    var generateOutputFile = function (req, sortedArray, cb) {
+        //console.log("Request: ", req.headers.accept );
+        if( req.headers.accept.search("application/json") !== -1 ) {
+            createJSONFile("destination.json", sortedArray, cb);
+        } else if( req.headers.accept.search("application/xml") !== -1 ) {
+            jsonToXML.XMLFileCreator("destination.xml", sortedArray, function(err, response){
+                if (err) {
+                    cb(err, response);
+                } else {
+                    cb(null, response);
+                }
+            });
+        } else if( req.headers.accept.search("text/plain") !== -1 ) {
+            jsonToText.TextFileCreator("destination.txt", sortedArray, function(err, response){
+                if (err) {
+                    cb(err, response);
+                } else {
+                    cb(null, response);
+                }
+            });
+        } else {
+            cb(new Error(" Proper request is not sent." ), null );
+        }
     }
 
 
     var sendResponse = function (req, res, sortedStudentArray, cb) {
-        var qParam = qs.parse( req.url.split('?')[1] );  //Splits parameter from the URL.
 
+        var qParam = qs.parse( req.url.split('?')[1] );  //Splits parameter from the URL.
         var filteredSortedArray = [];//new empty local elementArray to store filtered data.
         if( qParam.q === undefined ) {//if q param is not given in url then return all the data from array.
             filteredSortedArray = sortedStudentArray;
@@ -87,20 +85,28 @@ try{
                 }
             });//end of filling of the filteredSortedArray
         }//work about qParam.q is completed and sortedArray is ready.
-        console.log("sortedStudentArray: ", sortedStudentArray);
-        console.log("filteredSortedArray: ", filteredSortedArray);
-        generateOutputFile(req, res, filteredSortedArray , cb);
         //generateOutputFile(req, res, filteredSortedArray , cb);
-        ;
-        ;
-        console.log("Return data");
-        res.end("Return data.");
+        generateOutputFile(req, filteredSortedArray , function (err, response) {
+            if(err) {
+                cb(err, response);
+            } else {
+                ;//sentOutputFile();
+                ;
+                ;
+            }
+            ;
+            ;
+            ;
+            console.log("Return test data");
+            res.end("Return test data.");
+            return cb(null, null);
+        });
     }
     
 
 
     //Function which get called everytime when server receives therequest from client.
-    var server = http.createServer ( function (req,res) {
+    var server = http.createServer ( function (req, res) {
         //Checks and allows only the GET requests from the requests coming from client.
         if ( req.method === 'GET' ) {
 
@@ -108,31 +114,27 @@ try{
             folderName = folderName.toLowerCase(); //Converte folder name to lower case.
             if ( folderName === "favicon.ico" ) {
                 res.end();   //Avoid un necessory execution of code.
-            }
-            else if(folderName === "students") { //Got correct folderName from URL.
+            } else if(folderName === "students") { //Got correct folderName from URL.
                 //Read source.json file using "json-reader" module.
-                jsonReader.jsonObject("source.json", function ( err,object ) {
+                jsonReader.jsonObject("source.json", function ( err, object ) {
                     if(err) {  //Throw an error if failed to read JSON file. 
                         res.end("Error in reading JSON.");
-                        throw new Error(" Error in reading JSON.");
-                    }
-                    else {  // Executes code further as the json file read successfully.
+                        throw err;
+                    } else {  // Executes code further as the json file read successfully.
                         jsonSort.sortJSON ( object, function (err,sortedStudentArray) {
                             if(err) {  //throw an error if failed to return sorted array of information.
                                 res.end("Error on sorting JSON.");
-                                throw new Error(" Error on sorting JSON.");
+                                throw err;
                             } else {   //if array of the sorted data is returned from the module then execute following code.
                                 //server is already closed in both cases of error or successful.
                                 sendResponse(req, res, sortedStudentArray, function (err, response) {
                                     if(err) {  //Only throw an error message by catching error object.
                                         console.log(err);
-                                        throw new Error(" Error in sending response.");
+                                        throw err;
                                     } else {  //display success message.
                                         console.log("Response is successfully sent");
                                     }
-                                    //console.log("Return data in sorted json.");
-                                    //res.end("Return data in sorted json.");
-                                });
+                                });//Work of sending response is completed.
                             }
                         });//Work of sorted json is completed.
                     }
