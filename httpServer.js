@@ -16,19 +16,18 @@ try{
     if ((jsonToText === undefined)) throw new Error( " Can't access json-to-text module" );
     if ((jsonToXML === undefined)) throw new Error( " Can't access json-to-xml module" );
 
-
+    //Function to cretae json file from the given array of data.
     var createJSONFile = function (fileName, sortedArray, cb) {
         fs.writeFile(fileName, JSON.stringify( { students: sortedArray } ), function(err) {
-            if (err) {
+            if (err) {  //return error if error occured in json file creation.
                 return cb(err, "Failed to create JSON.");
-            } else {
+            } else {  //Return message of successful creation of json file.
                 return cb(null, "JSON is get created.");
             }
-            console.log("Inside JSON creation.");
         });
     }
+    //Generate output file according to the "accept" header send by client.
     var generateOutputFile = function (req, sortedArray, cb) {
-        //console.log("Request: ", req.headers.accept );
         if( req.headers.accept.search("application/json") !== -1 ) {
             createJSONFile("destination.json", sortedArray, cb);
         } else if( req.headers.accept.search("application/xml") !== -1 ) {
@@ -46,7 +45,7 @@ try{
         return data.search( queryParam );
     }
 
-
+    //sent output file according to the "accept" header to the client in response.
     var sentOutputFile = function (req, res, cb) {
         console.log("Request: ", req.headers.accept );
         var destinationFile;
@@ -71,6 +70,7 @@ try{
         }
     }
 
+    //Send response to to the client either files are crreted or the error message.
     var sendResponse = function (req, res, sortedStudentArray, cb) {
 
         var qParam = qs.parse( req.url.split('?')[1] );  //Splits parameter from the URL.
@@ -87,27 +87,22 @@ try{
             });//end of filling of the filteredSortedArray
         }//work about qParam.q is completed and sortedArray is ready.
 
+        //Generate output file according to the "accept" header send by client.
         generateOutputFile(req, filteredSortedArray , function (err, response) {
             if(err) {
                 res.end("Failed to generate output file.");
                 return cb(err, response);
             } else {
                 sentOutputFile(req, res, function (err, response) {
-                    ;
-                    ;
-                    ;
-                    if(err) {
+                    if (err) {
                         return cb(err, response);
                     } else {
-                        //res.end("Successful to send output file.");
                         return cb(null, response);
                     }
                 });
             }
         });
     }
-    
-
 
     //Function which get called everytime when server receives therequest from client.
     var server = http.createServer ( function (req, res) {
@@ -122,19 +117,16 @@ try{
                 //Read source.json file using "json-reader" module.
                 jsonReader.jsonObject("source.json", function ( err, object ) {
                     if(err) {  //Throw an error if failed to read JSON file. 
-                        res.end("Error in reading JSON.");
-                        throw err;
+                        res.end(err);
                     } else {  // Executes code further as the json file read successfully.
                         jsonSort.sortJSON ( object, function (err,sortedStudentArray) {
                             if(err) {  //throw an error if failed to return sorted array of information.
-                                res.end("Error on sorting JSON.");
-                                throw err;
+                                res.end(err);
                             } else {   //if array of the sorted data is returned from the module then execute following code.
                                 //server is already closed in both cases of error or successful.
                                 sendResponse(req, res, sortedStudentArray, function (err, response) {
                                     if(err) {  //Only throw an error message by catching error object.
                                         console.log(err);
-                                        throw err;
                                     } else {  //display success message.
                                         console.log("Response is successfully sent");
                                     }
@@ -145,13 +137,12 @@ try{
                 });//Callback of reading json is completed.
             } else {  //Throw an error in case of wrong URL is entered.
                 res.end("Wrong URL is entered.");
-                throw new Error(" Wrong URL is entered.");
-            }
-            //End of the processing on the GET request.
+                console.log(" Wrong URL is entered.");
+            }  //End of the processing on the GET request.
 
         } else {  //Close server if request coming from the client is other than GET request.
             res.end("Server closed: Request is other than GET request.");
-            throw new Error(" Server closed: Request is other than GET request.");
+            console.log(" Server closed: Request is other than GET request.");
         }
     });//Work of createServer is completed.
 
