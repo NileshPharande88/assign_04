@@ -7,7 +7,7 @@ try{
     var jsonToText = require("json-to-text");
     var jsonToXML = require("json-to-xml");
 
-    //Checks the  required modules are available or not.
+    //Checks the required modules are available or not.
     if ((http === undefined)) throw new Error( " Can't access http module" );
     if ((fs === undefined)) throw new Error( " Can't access fs module" );
     if ((qs === undefined)) throw new Error( " Can't access qs module" );
@@ -16,11 +16,6 @@ try{
     if ((jsonToText === undefined)) throw new Error( " Can't access json-to-text module" );
     if ((jsonToXML === undefined)) throw new Error( " Can't access json-to-xml module" );
 
-    var searchMatch = function ( data, queryParam ) {
-        data = data.toLowerCase();
-        queryParam = queryParam.toLowerCase();
-        return data.search( queryParam );
-    }
 
     var createJSONFile = function (fileName, sortedArray, cb) {
         fs.writeFile(fileName, JSON.stringify( { students: sortedArray } ), function(err) {
@@ -29,46 +24,52 @@ try{
             } else {
                 return cb(null, "JSON is get created.");
             }
+            console.log("Inside JSON creation.");
         });
     }
-
-
-    var sentOutputFile = function () {
-        console.log("Request: ", req.headers.accept );
-        if( req.headers.accept === "application/json") {
-            console.log("Accept: application/json");
-        } else if ( req.headers.accept === "application/xml") {
-            console.log("Accept: application/xml");
-        } else if ( req.headers.accept === "text/plain") {
-            console.log("Accept: text/plain");
-        }
-    }
-
     var generateOutputFile = function (req, sortedArray, cb) {
         //console.log("Request: ", req.headers.accept );
         if( req.headers.accept.search("application/json") !== -1 ) {
             createJSONFile("destination.json", sortedArray, cb);
         } else if( req.headers.accept.search("application/xml") !== -1 ) {
-            jsonToXML.XMLFileCreator("destination.xml", sortedArray, function(err, response){
-                if (err) {
-                    cb(err, response);
-                } else {
-                    cb(null, response);
-                }
-            });
+            jsonToXML.XMLFileCreator("destination.xml", sortedArray, cb);
         } else if( req.headers.accept.search("text/plain") !== -1 ) {
-            jsonToText.TextFileCreator("destination.txt", sortedArray, function(err, response){
-                if (err) {
-                    cb(err, response);
-                } else {
-                    cb(null, response);
-                }
-            });
+            jsonToText.TextFileCreator("destination.txt", sortedArray, cb);
         } else {
-            cb(new Error(" Proper request is not sent." ), null );
+            return cb(new Error(" Proper request is not sent."), null );
         }
     }
 
+    var searchMatch = function ( data, queryParam ) {
+        data = data.toLowerCase();
+        queryParam = queryParam.toLowerCase();
+        return data.search( queryParam );
+    }
+
+
+    var sentOutputFile = function (req, res, cb) {
+        console.log("Request: ", req.headers.accept );
+        var destinationFile;
+        if( req.headers.accept === "application/json") {
+            destinationFile = fs.readFileSync( "destination.json" );
+            res.writeHead(200, {'Content-Type': 'application/json' });
+            res.end( destinationFile );
+            return cb(null,"json file is successfully created.");
+        } else if ( req.headers.accept === "application/xml") {
+            destinationFile = fs.readFileSync( "destination.xml" );
+            res.writeHead(200, {'Content-Type': 'application/xml' });
+            res.end( destinationFile );
+            return cb(null,"xml file is successfully created.");
+        } else if ( req.headers.accept === "text/plain") {
+            destinationFile = fs.readFileSync( "destination.txt" );
+            res.writeHead(200, {'Content-Type': 'text/plain' });
+            res.end( destinationFile );
+            return cb(null,"text file is successfully created.");
+        } else {
+            res.end("Failed to send output file.");
+            return cb(new Error(" Proper request is not sent."), null );
+        }
+    }
 
     var sendResponse = function (req, res, sortedStudentArray, cb) {
 
@@ -85,21 +86,24 @@ try{
                 }
             });//end of filling of the filteredSortedArray
         }//work about qParam.q is completed and sortedArray is ready.
-        //generateOutputFile(req, res, filteredSortedArray , cb);
+
         generateOutputFile(req, filteredSortedArray , function (err, response) {
             if(err) {
-                cb(err, response);
+                res.end("Failed to generate output file.");
+                return cb(err, response);
             } else {
-                ;//sentOutputFile();
-                ;
-                ;
+                sentOutputFile(req, res, function (err, response) {
+                    ;
+                    ;
+                    ;
+                    if(err) {
+                        return cb(err, response);
+                    } else {
+                        //res.end("Successful to send output file.");
+                        return cb(null, response);
+                    }
+                });
             }
-            ;
-            ;
-            ;
-            console.log("Return test data");
-            res.end("Return test data.");
-            return cb(null, null);
         });
     }
     
