@@ -33,12 +33,12 @@ try{
 
     //Function to cretae json file from the given array of data.
     var createJSONFile = function (fileName, sortedArray, cb) {
-        fs.writeFile(fileName, JSON.stringify( { students: sortedArray } ), function(err) {
-            if (err) {  //return error if error occured in json file creation.
-                return cb(err, "Failed to create JSON.");
-            } else {  //Return message of successful creation of json file.
-                return cb(null, "JSON is get created.");
+        fs.writeFile(fileName, JSON.stringify( { students: sortedArray } ), function jsonWriterResponse(err) {
+            if (err) {
+                return cb(new Error(" Failed to create JSON."), null);
             }
+            //Return message of successful creation of json file.
+            return cb(null, "JSON is get created.");
         });
     }
     //Generate output file according to the "accept" header send by client.
@@ -50,7 +50,7 @@ try{
         } else if( req.headers.accept.search("text/plain") !== -1 ) {
             jsonToText.TextFileCreator("destination.txt", sortedArray, cb);
         } else {
-            return cb(new Error(" Proper request is not sent."), null );
+            return cb(new Error(" Proper request is not sent."), null);
         }
     }
 
@@ -62,60 +62,52 @@ try{
 
     //sent output file according to the "accept" header to the client in response.
     var sentOutputFile = function (req, res, cb) {
-        console.log("Request: ", req.headers.accept );
+        console.log("Request: ", req.headers.accept);
         var destinationFile;
         if( req.headers.accept === "application/json") {
-            destinationFile = fs.readFileSync( "destination.json" );
+            destinationFile = fs.readFileSync("destination.json");
             res.writeHead(200, {'Content-Type': 'application/json' });
             res.end( destinationFile );
             return cb(null,"json file is successfully created.");
         } else if ( req.headers.accept === "application/xml") {
-            destinationFile = fs.readFileSync( "destination.xml" );
+            destinationFile = fs.readFileSync("destination.xml");
             res.writeHead(200, {'Content-Type': 'application/xml' });
             res.end( destinationFile );
             return cb(null,"xml file is successfully created.");
         } else if ( req.headers.accept === "text/plain") {
-            destinationFile = fs.readFileSync( "destination.txt" );
+            destinationFile = fs.readFileSync("destination.txt");
             res.writeHead(200, {'Content-Type': 'text/plain' });
             res.end( destinationFile );
             return cb(null,"text file is successfully created.");
         } else {
             res.end("Failed to send output file.");
-            return cb(new Error(" Proper request is not sent."), null );
+            return cb(new Error(" Proper request is not sent."), null);
         }
     }
 
     //Send response to to the client either files are crreted or the error message.
     var sendResponse = function (req, res, sortedStudentArray, cb) {
-
         var qParam = qs.parse( req.url.split('?')[1] );  //Splits parameter from the URL.
         var filteredSortedArray = [];//new empty local elementArray to store filtered data.
-        if( qParam.q === undefined ) {//if q param is not given in url then return all the data from array.
+        if ( qParam.q === undefined ) {//if q param is not given in url then return all the data from array.
             filteredSortedArray = sortedStudentArray;
         } else {  //filter data according to the qParameter.
-            sortedStudentArray.forEach(function (value) {//filling of the elementArray.
-                if ( searchMatch(value.fName, qParam.q) !== -1 ) {
-                    filteredSortedArray.push(value);
-                } else if ( searchMatch(value.lName, qParam.q) !== -1 ) {
-                    filteredSortedArray.push(value);
+            for (x in sortedStudentArray) {  //filling of the elementArray.
+                if ( searchMatch(sortedStudentArray[x].fName, qParam.q) !== -1 ) {
+                    filteredSortedArray.push(sortedStudentArray[x]);
+                } else if ( searchMatch(sortedStudentArray[x].lName, qParam.q) !== -1 ) {
+                    filteredSortedArray.push(sortedStudentArray[x]);
                 }
-            });//end of filling of the filteredSortedArray
-        }//work about qParam.q is completed and sortedArray is ready.
-
+            }
+        }
+        //work about qParam.q is completed and sortedArray is ready.
         //Generate output file according to the "accept" header send by client.
-        generateOutputFile(req, filteredSortedArray , function (err, response) {
-            if(err) {
+        generateOutputFile(req, filteredSortedArray , function OpFileGenerationResponse(err, response) {
+            if (err) {
                 res.end("Failed to generate output file.");
                 return cb(err, response);
-            } else {
-                sentOutputFile(req, res, function (err, response) {
-                    if (err) {
-                        return cb(err, response);
-                    } else {
-                        return cb(null, response);
-                    }
-                });
             }
+            sentOutputFile(req, res, cb);
         });
     }
 
@@ -156,13 +148,13 @@ try{
                         throw new Error(" Failed to send response to client.");
                     }
                     //display success message.
-                    console.log("Response is successfully sent");
+                    console.log(response);
                 });//Work of sending response is completed.
             });//Work of sorted json is completed.
         });//Callback of reading json is completed.
     });//Work of createServer is completed.
 
-    server.listen( 1337, "127.0.0.1", function() {
+    server.listen( 1337, "127.0.0.1", function listenerResponse() {
         console.log("Listening on: 127.0.0.1: 1337");
     });
 } catch (errorMessage) {

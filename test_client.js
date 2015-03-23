@@ -20,7 +20,7 @@ try {
       chunks += chunk;
       //console.log('BODY: '+ chunk);
     });
-    response.on('end', function () {
+    response.on('end', function onEnd() {
       console.log('BODY: ', chunks);
     });
   }
