@@ -1,6 +1,6 @@
 try{
-    var http = require("http");
     var fs = require('fs');
+    var http = require("http");
     var qs = require('querystring');
     var jsonReader = require("json-reader");
     var jsonSort = require("json-sort");
@@ -8,13 +8,28 @@ try{
     var jsonToXML = require("json-to-xml");
 
     //Checks the required modules are available or not.
-    if ((http === undefined)) throw new Error( " Can't access http module" );
-    if ((fs === undefined)) throw new Error( " Can't access fs module" );
-    if ((qs === undefined)) throw new Error( " Can't access qs module" );
-    if ((jsonReader === undefined)) throw new Error( " Can't access json-reader module" );
-    if ((jsonSort === undefined)) throw new Error( " Can't access json-sort module" );
-    if ((jsonToText === undefined)) throw new Error( " Can't access json-to-text module" );
-    if ((jsonToXML === undefined)) throw new Error( " Can't access json-to-xml module" );
+    if (fs === undefined) {
+        throw new Error(" Can't access fs module.");
+    }
+    if (http === undefined) {
+        throw new Error(" Can't access http module.");
+    }
+    if (qs === undefined) {
+        throw new Error(" Can't access querystring module.");
+    }
+    if (jsonReader === undefined) {
+        throw new Error(" Can't access jsonReader module.");
+    }
+    if (jsonSort === undefined) {
+        throw new Error(" Can't access json-sort module.");
+    }
+    if (jsonToText === undefined) {
+        throw new Error(" Can't access json-to-text module.");
+    }
+    if (jsonToXML === undefined) {
+        throw new Error(" Can't access json-to-xml module.");
+    }
+
 
     //Function to cretae json file from the given array of data.
     var createJSONFile = function (fileName, sortedArray, cb) {
@@ -105,49 +120,50 @@ try{
     }
 
     //Function which get called everytime when server receives therequest from client.
-    var server = http.createServer ( function (req, res) {
-        //Checks and allows only the GET requests from the requests coming from client.
-        if ( req.method === 'GET' ) {
-
-            var folderName = req.url.split('/')[1]; //devided url on bas of "/".
-            folderName = folderName.toLowerCase(); //Converte folder name to lower case.
-            if ( folderName === "favicon.ico" ) {
-                res.end();   //Avoid un necessory execution of code.
-            } else if(folderName === "students") { //Got correct folderName from URL.
-                //Read source.json file using "json-reader" module.
-                jsonReader.jsonObject("source.json", function ( err, object ) {
-                    if(err) {  //Throw an error if failed to read JSON file. 
-                        res.end(err);
-                    } else {  // Executes code further as the json file read successfully.
-                        jsonSort.sortJSON ( object, function (err,sortedStudentArray) {
-                            if(err) {  //throw an error if failed to return sorted array of information.
-                                res.end(err);
-                            } else {   //if array of the sorted data is returned from the module then execute following code.
-                                //server is already closed in both cases of error or successful.
-                                sendResponse(req, res, sortedStudentArray, function (err, response) {
-                                    if(err) {  //Only throw an error message by catching error object.
-                                        console.log(err);
-                                    } else {  //display success message.
-                                        console.log("Response is successfully sent");
-                                    }
-                                });//Work of sending response is completed.
-                            }
-                        });//Work of sorted json is completed.
-                    }
-                });//Callback of reading json is completed.
-            } else {  //Throw an error in case of wrong URL is entered.
-                res.end("Wrong URL is entered.");
-                console.log(" Wrong URL is entered.");
-            }  //End of the processing on the GET request.
-
-        } else {  //Close server if request coming from the client is other than GET request.
+    var server = http.createServer ( function serverHandler(req, res) {
+        if ( req.method !== 'GET' ) {
             res.end("Server closed: Request is other than GET request.");
-            console.log(" Server closed: Request is other than GET request.");
+            throw new Error(" Server closed: Request is other than GET request.");
         }
+        //The requests coming from client was only the GET requests so prepare response for it.
+        var folderName = req.url.split('/')[1];  //devided url on base of "/".
+        folderName = folderName.toLowerCase();  //Converte folder name to lower case.
+        if ( folderName === "favicon.ico" ) {
+            res.end();  //Avoid un-necessory execution of code.
+        } else if (folderName !== "students") {  //Throw an error in case of wrong URL is entered.
+            res.end("Wrong URL is entered.");
+            throw new Error(" Wrong URL is entered.");
+        }
+        //Read source.json file using "json-reader" module.
+        jsonReader.jsonObject("source.json", function jsonReaderHandler( err, object ) {
+            if (err) {  //Throw an error if failed to read JSON file.
+                res.end("Failed to read source.json.");
+                console.log(err);
+                throw new Error(" Failed to read source.json.");
+            }
+            // Executes code further as the json file read successfully.
+            jsonSort.sortJSON( object, function jsonsorterHandler(sorterErr, sortedStudentArray) {
+                if (sorterErr) {  //throw an error if failed to return sorted array of information.
+                    res.end("Failed to sort source.json");
+                    console.log(sorterErr);
+                    throw new Error(" Failed to sort source.json.");
+                }
+                //if array of the sorted data is returned from the module then execute following code.
+                //server is already closed in both cases inside the function body of error or successful callback.
+                sendResponse(req, res, sortedStudentArray, function sendingResponseHandler(err, response) {
+                    if (err) {  //Only throw an error message by catching error object.
+                        console.log(err);
+                        throw new Error(" Failed to send response to client.");
+                    }
+                    //display success message.
+                    console.log("Response is successfully sent");
+                });//Work of sending response is completed.
+            });//Work of sorted json is completed.
+        });//Callback of reading json is completed.
     });//Work of createServer is completed.
 
     server.listen( 1337, "127.0.0.1", function() {
-        console.log( "Listening on: 127.0.0.1: 1337" );
+        console.log("Listening on: 127.0.0.1: 1337");
     });
 } catch (errorMessage) {
     console.log(errorMessage);

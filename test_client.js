@@ -12,7 +12,7 @@ try {
    headers: {'accept': 'application/json'}
   };
 
-  var chunks;
+  var chunks = "";
   var callback = function(response) {
     console.log("Status code: ", response.statusCode);
     console.log("Status: ", response.statusMessage);
